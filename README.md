@@ -27,9 +27,11 @@
     - Dense Vector: BM25 유사도 (TF-IDF 와 유사)
 
 # Vector DB 확인
-<img width="1510" height="807" alt="스크린샷 2025-08-09 오후 9 01 52" src="https://github.com/user-attachments/assets/15189920-48df-4cd3-a562-8b6c03492b5e" />
-<img width="1510" height="807" alt="스크린샷 2025-08-09 오후 9 02 10" src="https://github.com/user-attachments/assets/97cf25b6-b422-4134-ba57-71b8eeb3bdbc" />
-<img width="1510" height="807" alt="스크린샷 2025-08-09 오후 9 02 43" src="https://github.com/user-attachments/assets/320dba35-869f-4e78-9b85-c720cb179b6d" />
+<img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 37 42" src="https://github.com/user-attachments/assets/300b3457-e10e-4835-85fe-5e43bafa5352" />
+
+<img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 37 57" src="https://github.com/user-attachments/assets/5caca83c-0225-4b24-9f73-5e3579752f00" />
+
+<img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 40 01" src="https://github.com/user-attachments/assets/15191290-441a-4c40-88fa-3ac36ddf0029" />
 
 
 # Vector DB 검색 결과 확인
