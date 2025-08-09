@@ -1,0 +1,375 @@
+# =========================================================
+# Namespace
+# =========================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: poc-kanana-rag
+
+---
+# =========================================================
+# ImagePullSecrets / 공용 Secret
+# =========================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ncr-secret
+  namespace: poc-kanana-rag
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: "<BASE64_DOCKERCONFIGJSON>"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: env-secret
+  namespace: poc-kanana-rag
+type: Opaque
+stringData:
+  ENV: "dev"
+  ERROR_CODE_URL: "https://example.com/errors.json"
+  HF_HOME: "/root/.cache/huggingface"
+  SVC_EMBEDDING_PORT: "8085"
+  HUGGINGFACEHUB_API_TOKEN: "<PUT_YOUR_HF_TOKEN>"
+
+---
+# =========================================================
+# 공용 ConfigMap (Milvus는 Helm 서비스로 접근)
+# =========================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-config
+  namespace: poc-kanana-rag
+data:
+  # vLLM
+  MODEL_ID: "kakaocorp/kanana-nano-2.1b-instruct"
+  VLLM_HOST: "0.0.0.0"
+  VLLM_PORT: "8082"
+  LLM_API_KEY: "EMPTY"
+  LLM_OPENAI_BASE: "http://vllm.poc-kanana-rag.svc.cluster.local:8082/v1"
+
+  # Milvus (Helm release 이름을 'milvus'로 가정)
+  MILVUS_URI: "milvus.poc-kanana-rag.svc.cluster.local:19530"
+  MILVUS_DB: "default"
+
+  # Internal services
+  EMBEDDING_BASE_URL: "http://embedding.poc-kanana-rag.svc.cluster.local:8085"
+
+  # (옵션) 하이브리드 서치 튜닝 파라미터
+  HYBRID_ALPHA: "0.5"
+  SPARSE_DIM: "1000000"
+
+# =========================================================
+# 1) Embedding (nodepool-name=gpu1)
+# =========================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: embedding
+  namespace: poc-kanana-rag
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: embedding
+  template:
+    metadata:
+      labels:
+        app: embedding
+    spec:
+      nodeSelector:
+        nodepool-name: gpu1
+      imagePullSecrets:
+      - name: ncr-secret
+      containers:
+      - name: embedding-app
+        image: acme-kr-poc-kanana-rag-ncr.kr.ncr.ntruss.com/embedding-app:v1.0
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8085
+        env:
+        - name: POOL
+          value: "0"
+        - name: WORKER
+          value: "1"
+        - name: INTRA_OP_THREAD
+          value: "2"
+        - name: INTER_OP_THREAD
+          value: "1"
+        - name: ENV
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: ENV
+        - name: ERROR_CODE_URL
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: ERROR_CODE_URL
+        - name: HF_HOME
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: HF_HOME
+        - name: SVC_EMBEDDING_PORT
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: SVC_EMBEDDING_PORT
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8085
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: 8085
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 2
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "2Gi"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 10001
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: hf-cache
+          mountPath: /root/.cache/huggingface
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: hf-cache
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: embedding
+  namespace: poc-kanana-rag
+spec:
+  selector:
+    app: embedding
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8085
+    targetPort: 8085
+
+# =========================================================
+# 2) vLLM (nodepool-name=gpu2의 특정 노드 고정, 다른 gpu2 노드는 empty)
+#    - gpu2-slot=llm 라벨이 붙은 노드에만 스케줄
+# =========================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  namespace: poc-kanana-rag
+  labels:
+    app: vllm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      nodeSelector:
+        nodepool-name: gpu2
+        gpu2-slot: llm
+      imagePullSecrets:
+      - name: ncr-secret
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: HF_HOME
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: HF_HOME
+        - name: HUGGINGFACEHUB_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: env-secret
+              key: HUGGINGFACEHUB_API_TOKEN
+        - name: VLLM_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: VLLM_HOST
+        - name: VLLM_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: VLLM_PORT
+        - name: MODEL_ID
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: MODEL_ID
+        args:
+        - "-m"
+        - "vllm.entrypoints.openai.api_server"
+        - "--model"
+        - "$(MODEL_ID)"
+        - "--trust-remote-code"
+        - "--dtype"
+        - "bfloat16"
+        - "--gpu-memory-utilization"
+        - "0.9"
+        - "--tensor-parallel-size"
+        - "1"
+        - "--host"
+        - "$(VLLM_HOST)"
+        - "--port"
+        - "$(VLLM_PORT)"
+        - "--api-key"
+        - "EMPTY"
+        ports:
+        - name: http
+          containerPort: 8082
+        resources:
+          limits:
+            nvidia.com/mig-7g.80gb: "1"   # 실제 GPU/MIG 리소스 키로 조정
+            cpu: "4"
+            memory: "32Gi"
+          requests:
+            nvidia.com/mig-7g.80gb: "1"
+            cpu: "2"
+            memory: "16Gi"
+        volumeMounts:
+        - name: hf-cache
+          mountPath: /root/.cache/huggingface
+      volumes:
+      - name: hf-cache
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  namespace: poc-kanana-rag
+spec:
+  selector:
+    app: vllm
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8082
+    targetPort: 8082
+
+# =========================================================
+# 3) Controller (nodepool-name=cpu1)
+# =========================================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-controller
+  namespace: poc-kanana-rag
+  labels:
+    app: rag-controller
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: rag-controller
+  template:
+    metadata:
+      labels:
+        app: rag-controller
+    spec:
+      nodeSelector:
+        nodepool-name: cpu1
+      imagePullSecrets:
+      - name: ncr-secret
+      containers:
+      - name: controller
+        image: ghcr.io/yourrepo/rag-controller:latest
+        command: ["sh","-c"]
+        args:
+        - uvicorn main:app --host 0.0.0.0 --port 8080
+        env:
+        - name: OPENAI_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: LLM_OPENAI_BASE
+        - name: MILVUS_URI
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: MILVUS_URI
+        - name: MILVUS_DB
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: MILVUS_DB
+        - name: EMBEDDING_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rag-config
+              key: EMBEDDING_BASE_URL
+        ports:
+        - name: http
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-controller
+  namespace: poc-kanana-rag
+spec:
+  selector:
+    app: rag-controller
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
