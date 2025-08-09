@@ -34,8 +34,9 @@
 
 # Vector DB 검색 결과 확인
 - Q. mcp 에 대해서 알려줘
-- Retriever.<br>
-| 파일명     | 내용 요약 |
+- Retriever.
+
+| 파일명     | chunk |
 |------------|-----------|
 | **20109.md** | **배포 및 DNS 설정**<br>- Heroku 배포 자동화 진행, 일부 구버전 API 사용 문제는 문서 링크로 해결<br>- GoDaddy 도메인 연결 과정(버튼 위치, 입력 값)까지 상세 안내하여 손쉽게 설정 완료<br>- AI 도구로서의 Windsurf 사용 경험 공유 |
 | **20721.md** | **WinDBG(CDB) 파이썬 제어 및 MCP 프로토콜 서버 래핑**<br>- WinDBG(CDB)를 파이썬으로 제어하고, AI가 활용할 수 있도록 MCP 서버로 래핑<br>- MCP는 Anthropic이 개발한 AI-외부 도구 통신 표준<br>- **MCP 장점**:<br>  • 모든 AI 모델에서 사용 가능<br>  • VS Code 외 환경에서도 독립 실행 가능<br>  • 비플랫폼 종속적<br>  • 빠른 기능 확장성 확보 |
