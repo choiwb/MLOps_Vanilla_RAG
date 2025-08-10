@@ -13,10 +13,6 @@ image:
     repository: milvusdb/milvus
     tag: v2.5.9
     pullPolicy: IfNotPresent
-    ## Optionally specify an array of imagePullSecrets.
-    ## Secrets must be manually created in the namespace.
-    ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
-    ##
     # pullSecrets:
     #   - myRegistryKeySecretName
   tools:
@@ -24,25 +20,21 @@ image:
     tag: v0.1.2
     pullPolicy: IfNotPresent
 
-# Global node selector
-# If set, this will apply to all milvus components
-# Individual components can be set to a different node selector
+# Global node selector (모든 컴포넌트 기본 적용)
 nodeSelector:
   system: vdb
 
-# Global tolerations
-# If set, this will apply to all milvus components
-# Individual components can be set to a different tolerations
-tolerations: []
+# Global tolerations (모든 컴포넌트 기본 적용)
+tolerations:
+  - key: "dedicated"
+    operator: "Equal"
+    value: "gpu1"
+    effect: "NoSchedule"
 
 # Global affinity
-# If set, this will apply to all milvus components
-# Individual components can be set to a different affinity
 affinity: {}
 
 # Global securityContext
-# If set, this will apply to all milvus components
-# Individual components can be set to a different securityContext
 securityContext: {}
   # runAsUser: 1000
   # runAsGroup: 1000
@@ -50,9 +42,6 @@ securityContext: {}
   # runAsNonRoot: true
 
 # Global topologySpreadConstraints
-# If set, this will apply to all milvus components
-# Individual components can be set to different topologySpreadConstraints
-# ref: https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/
 topologySpreadConstraints: []
 # - maxSkew: 1
 #   topologyKey: topology.kubernetes.io/zone
@@ -62,36 +51,19 @@ topologySpreadConstraints: []
 #       app.kubernetes.io/name: milvus
 
 # Global labels and annotations
-# If set, this will apply to all milvus components
 labels: {}
 annotations: {}
 
 # Global Volumes & volumeMounts
-# If set, this will apply to all milvus components
-# ref: https://kubernetes.io/docs/concepts/storage/volumes/
 volumes: []
 volumeMounts: []
 
 # Experimental feature: streaming node
-# Only support standalone mode with rocksmq and pulsar message queue,
-# cluster mode with pulsar message queue.
-# Experimental feature, not recommended for production.
 streaming:
   enabled: false
 
-##
-## If set, the whole config will be mounted from this custom ConfigMap.
-## The ConfigMap should have a key named `milvus.yaml` which contains the full Milvus config.
-## extraConfigFiles will be ignored if this variable is set.
-##
 customConfigMap: ""
 
-# Extra configs for milvus.yaml
-# If set, this config will merge into milvus.yaml
-# Please follow the config structure in the milvus.yaml
-# at https://github.com/milvus-io/milvus/blob/master/configs/milvus.yaml
-# Note: this config will be the top priority which will override the config
-# in the image and helm chart.
 extraConfigFiles:
   user.yaml: |+
     #    For example enable rest http for milvus proxy
@@ -108,10 +80,6 @@ extraConfigFiles:
     #     security:
     #       tlsMode: 1
 
-## Expose the Milvus service to be accessed from outside the cluster (LoadBalancer service).
-## or access it from within the cluster (ClusterIP service). Set the service type and the port to serve it.
-## ref: http://kubernetes.io/docs/user-guide/services/
-##
 service:
   type: NodePort # woobin.choi
   port: 19530
@@ -119,26 +87,15 @@ service:
   nodePort: ""
   annotations: {}
   labels: {}
-
-  ## List of IP addresses at which the Milvus service is available
-  ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
-  ##
   externalIPs: []
-  #   - externalIp1
-
-  # LoadBalancerSourcesRange is a list of allowed CIDR values, which are combined with ServicePort to
-  # set allowed inbound rules on the security group assigned to the master load balancer
   loadBalancerSourceRanges:
   - 0.0.0.0/0
-  # Optionally assign a known public LB IP
   # loadBalancerIP: 1.2.3.4
 
 ingress:
   enabled: false
   ingressClassName: ""
   annotations:
-    # Annotation example: set nginx ingress type
-    # kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
     nginx.ingress.kubernetes.io/listen-ports-ssl: '[19530]'
     nginx.ingress.kubernetes.io/proxy-body-size: 4m
@@ -148,13 +105,7 @@ ingress:
     - host: "milvus-example.local"
       path: "/"
       pathType: "Prefix"
-    # - host: "milvus-example2.local"
-    #   path: "/otherpath"
-    #   pathType: "Prefix"
   tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - milvus-example.local
 
 serviceAccount:
   create: false
@@ -164,13 +115,10 @@ serviceAccount:
 
 metrics:
   enabled: true
-
   serviceMonitor:
-    # Set this to `true` to create ServiceMonitor for Prometheus operator
     enabled: false
     interval: "30s"
     scrapeTimeout: "10s"
-    # Additional labels that can be used so ServiceMonitor will be discovered by Prometheus
     additionalLabels: {}
 
 livenessProbe:
@@ -192,36 +140,22 @@ readinessProbe:
 log:
   level: "info"
   file:
-    maxSize: 300    # MB
-    maxAge: 10    # day
+    maxSize: 300
+    maxAge: 10
     maxBackups: 20
-  format: "text"    # text/json
-
+  format: "text"
   persistence:
     mountPath: "/milvus/logs"
-    ## If true, create/use a Persistent Volume Claim
-    ## If false, use emptyDir
-    ##
     enabled: false
     annotations:
       helm.sh/resource-policy: keep
     persistentVolumeClaim:
       existingClaim: ""
-      ## Milvus Logs Persistent Volume Storage Class
-      ## If defined, storageClassName: <storageClass>
-      ## If set to "-", storageClassName: "", which disables dynamic provisioning
-      ## If undefined (the default) or set to null, no storageClassName spec is
-      ##   set, choosing the default provisioner.
-      ## ReadWriteMany access mode required for milvus cluster.
-      ##
       storageClass:
       accessModes: ReadWriteMany
       size: 10Gi
       subPath: ""
 
-## Heaptrack traces all memory allocations and annotates these events with stack traces.
-## See more: https://github.com/KDE/heaptrack
-## Enable heaptrack in production is not recommended.
 heaptrack:
   image:
     repository: milvusdb/heaptrack
@@ -229,47 +163,36 @@ heaptrack:
     pullPolicy: IfNotPresent
 
 standalone:
-  replicas: 1  # Run standalone mode with replication disabled
+  replicas: 1
   priorityClassName: high-priority # woobin.choi
   resources: {}
-  # Set local storage size in resources
-  # resources:
-  #   limits:
-  #     ephemeral-storage: 100Gi
+  # 전역 nodeSelector/ tolerations 적용 + 컴포넌트에도 명시(가독성/안전)
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   disk:
     enabled: true
     size:
-      enabled: false  # Enable local storage size limit
+      enabled: false
   profiling:
-    enabled: false  # Enable live profiling
-
-  ## Default message queue for milvus standalone
-  ## Supported value: rocksmq, natsmq, pulsar, kafka and woodpecker
+    enabled: false
   messageQueue: rocksmq
   persistence:
     mountPath: "/var/lib/milvus"
-    ## If true, alertmanager will create/use a Persistent Volume Claim
-    ## If false, use emptyDir
-    ##
     enabled: true
     annotations:
       helm.sh/resource-policy: keep
     persistentVolumeClaim:
       existingClaim: ""
-      ## Milvus Persistent Volume Storage Class
-      ## If defined, storageClassName: <storageClass>
-      ## If set to "-", storageClassName: "", which disables dynamic provisioning
-      ## If undefined (the default) or set to null, no storageClassName spec is
-      ##   set, choosing the default provisioner.
-      ##
       storageClass:
       accessModes: ReadWriteOnce
       size: 50Gi
@@ -277,41 +200,28 @@ standalone:
 
 proxy:
   enabled: true
-  # You can set the number of replicas to -1 to remove the replicas field in case you want to use HPA
   replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   http:
-    enabled: true  # whether to enable http rest server
+    enabled: true
     debugMode:
       enabled: false
-  # Mount a TLS secret into proxy pod
   tls:
     enabled: false
-## when enabling proxy.tls, all items below should be uncommented and the key and crt values should be populated.
-#    enabled: true
-#    secretName: milvus-tls
-## expecting base64 encoded values here: i.e. $(cat tls.crt | base64 -w 0) and $(cat tls.key | base64 -w 0)
-#    key: LS0tLS1CRUdJTiBQU--REDUCT
-#    crt: LS0tLS1CRUdJTiBDR--REDUCT
-#  volumes:
-#  - secret:
-#      secretName: milvus-tls
-#    name: milvus-tls
-#  volumeMounts:
-#  - mountPath: /etc/milvus/certs/
-#    name: milvus-tls
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
   strategy: {}
   annotations: {}
   hpa:
@@ -322,26 +232,26 @@ proxy:
 
 rootCoordinator:
   enabled: false
-  # You can set the number of replicas greater than 1, only if enable active standby
-  replicas: 1  # Run Root Coordinator mode with replication disabled
+  replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   activeStandby:
-    enabled: false  # Enable active-standby when you set multiple replicas for root coordinator
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
-
   service:
     port: 53100
     annotations: {}
@@ -350,26 +260,26 @@ rootCoordinator:
 
 queryCoordinator:
   enabled: false
-  # You can set the number of replicas greater than 1, only if enable active standby
-  replicas: 1  # Run Query Coordinator mode with replication disabled
+  replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   activeStandby:
-    enabled: false  # Enable active-standby when you set multiple replicas for query coordinator
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
-
   service:
     port: 19531
     annotations: {}
@@ -378,29 +288,26 @@ queryCoordinator:
 
 queryNode:
   enabled: true
-  # You can set the number of replicas to -1 to remove the replicas field in case you want to use HPA
   replicas: 1
   resources: {}
-  # Set local storage size in resources
-  # resources:
-  #   limits:
-  #     ephemeral-storage: 100Gi
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   disk:
-    enabled: true  # Enable querynode load disk index, and search on disk index
+    enabled: true
     size:
-      enabled: false  # Enable local storage size limit
+      enabled: false
   profiling:
-    enabled: false  # Enable live profiling
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
   hpa:
@@ -408,30 +315,30 @@ queryNode:
     minReplicas: 1
     maxReplicas: 5
     cpuUtilization: 40
-    memoryUtilization: 60
+  memoryUtilization: 60
 
 indexCoordinator:
   enabled: false
-  # You can set the number of replicas greater than 1, only if enable active standby
-  replicas: 1   # Run Index Coordinator mode with replication disabled
+  replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   activeStandby:
-    enabled: false  # Enable active-standby when you set multiple replicas for index coordinator
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
-
   service:
     port: 31000
     annotations: {}
@@ -440,28 +347,26 @@ indexCoordinator:
 
 indexNode:
   enabled: true
-  # You can set the number of replicas to -1 to remove the replicas field in case you want to use HPA
   replicas: 1
   resources: {}
-  # Set local storage size in resources
-  # limits:
-  #    ephemeral-storage: 100Gi
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   disk:
-    enabled: true  # Enable index node build disk vector index
+    enabled: true
     size:
-      enabled: false  # Enable local storage size limit
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+      enabled: false
   strategy: {}
   annotations: {}
   hpa:
@@ -472,26 +377,26 @@ indexNode:
 
 dataCoordinator:
   enabled: false
-  # You can set the number of replicas greater than 1, only if enable active standby
-  replicas: 1           # Run Data Coordinator mode with replication disabled
+  replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   activeStandby:
-    enabled: false  # Enable active-standby when you set multiple replicas for data coordinator
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
-
   service:
     port: 13333
     annotations: {}
@@ -500,21 +405,22 @@ dataCoordinator:
 
 dataNode:
   enabled: true
-  # You can set the number of replicas to -1 to remove the replicas field in case you want to use HPA
   replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
   hpa:
@@ -524,29 +430,28 @@ dataNode:
     cpuUtilization: 40
 
 ## mixCoordinator contains all coord
-## If you want to use mixcoord, enable this and disable all of other coords
 mixCoordinator:
   enabled: true
-  # You can set the number of replicas greater than 1, only if enable active standby
-  replicas: 1           # Run Mixture Coordinator mode with replication disabled
+  replicas: 1
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
-  topologySpreadConstraints: []  # Component specific topologySpreadConstraints
+  topologySpreadConstraints: []
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   activeStandby:
-    enabled: false  # Enable active-standby when you set multiple replicas for Mixture coordinator
-  # Deployment strategy, default is RollingUpdate
-  # Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment
+    enabled: false
   strategy: {}
   annotations: {}
-
   service:
     annotations: {}
     labels: {}
@@ -557,13 +462,17 @@ streamingNode:
   resources: {}
   nodeSelector: {}
   affinity: {}
-  tolerations: []
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   securityContext: {}
   extraEnv: []
   heaptrack:
     enabled: false
   profiling:
-    enabled: false  # Enable live profiling
+    enabled: false
   strategy: {}
 
 attu:
@@ -578,30 +487,26 @@ attu:
     labels: {}
     type: NodePort # woobin.choi
     port: 3000
-    # loadBalancerIP: ""
   resources: {}
   securityContext: {}
   podLabels: {}
   annotations: {}
+  # attu도 gpu1에 고정하려면 tolerations 추가
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   ingress:
     enabled: false
     ingressClassName: ""
     annotations: {}
-    # Annotation example: set nginx ingress type
-    # kubernetes.io/ingress.class: nginx
     labels: {}
     hosts:
       - milvus-attu.local
     tls: []
-    #  - secretName: chart-attu-tls
-    #    hosts:
-    #      - milvus-attu.local
-
 
 ## Configuration values for the minio dependency
-## ref: https://github.com/zilliztech/milvus-helm/blob/master/charts/minio/README.md
-##
-
 minio:
   enabled: true
   name: minio
@@ -624,21 +529,22 @@ minio:
   resources:
     requests:
       memory: 2Gi
-
   nodeSelector:
     system: vdb
-
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   service:
     type: NodePort # woobin.choi
     port: 9000
-
   persistence:
     enabled: true
     existingClaim: ""
     storageClass:
     accessMode: ReadWriteOnce
     size: 500Gi
-
   livenessProbe:
     enabled: true
     initialDelaySeconds: 5
@@ -646,7 +552,6 @@ minio:
     timeoutSeconds: 5
     successThreshold: 1
     failureThreshold: 5
-
   readinessProbe:
     enabled: true
     initialDelaySeconds: 5
@@ -654,7 +559,6 @@ minio:
     timeoutSeconds: 1
     successThreshold: 1
     failureThreshold: 5
-
   startupProbe:
     enabled: true
     initialDelaySeconds: 0
@@ -664,9 +568,6 @@ minio:
     failureThreshold: 60
 
 ## Configuration values for the etcd dependency
-## ref: https://artifacthub.io/packages/helm/bitnami/etcd
-##
-
 etcd:
   enabled: true
   name: etcd
@@ -678,43 +579,34 @@ etcd:
     repository: "milvusdb/etcd"
     tag: "3.5.18-r1"
     pullPolicy: IfNotPresent
-
   service:
     type: ClusterIP
     port: 2379
     peerPort: 2380
-
   nodeSelector:
     system: vdb
-
+  tolerations:
+    - key: "dedicated"
+      operator: "Equal"
+      value: "gpu1"
+      effect: "NoSchedule"
   auth:
     rbac:
       enabled: false
-
   persistence:
     enabled: true
     storageClass:
     accessMode: ReadWriteOnce
     size: 10Gi
-
-  ## Change default timeout periods to mitigate zoobie probe process
   livenessProbe:
     enabled: true
     timeoutSeconds: 10
-
   readinessProbe:
     enabled: true
     periodSeconds: 20
     timeoutSeconds: 10
-
-  ## Enable auto compaction
-  ## compaction by every 1000 revision
-  ##
   autoCompactionMode: revision
   autoCompactionRetention: "1000"
-
-  ## Increase default quota to 4G
-  ##
   extraEnvVars:
   - name: ETCD_QUOTA_BACKEND_BYTES
     value: "4294967296"
@@ -723,13 +615,9 @@ etcd:
   - name: ETCD_ELECTION_TIMEOUT
     value: "2500"
 
-## Configuration values for the pulsar dependency
-## ref: https://github.com/apache/pulsar-helm-chart
-##
-
-# default values for pulsar v3
+## Pulsar/Kafka/External* (기존 유지)
 pulsarv3:
-  name: "pulsarv3" # note: nameOveride should be kept the same as the name field
+  name: "pulsarv3"
   nameOverride: "pulsarv3"
   enabled: false # woobin.choi
   persistence: true
@@ -738,25 +626,15 @@ pulsarv3:
   volumes:
     persistence: true
     local_storage: false
-
   components:
-    # zookeeper
     zookeeper: true
-    # bookkeeper
     bookkeeper: true
-    # bookkeeper - autorecovery
     autorecovery: true
-    # broker
     broker: true
-    # functions
     functions: false
-    # proxy
     proxy: true
-    # toolset
     toolset: false
-    # pulsar manager
     pulsar_manager: false
-
   images:
     zookeeper:
       repository: apachepulsar/pulsar
@@ -778,7 +656,6 @@ pulsarv3:
       repository: apachepulsar/pulsar
       tag: 3.0.7
       pullPolicy: IfNotPresent
-
   zookeeper:
     pdb:
       usePolicy: false
@@ -796,7 +673,6 @@ pulsarv3:
         memory: 256Mi
         cpu: 0.2
     volumes:
-      # use a persistent volume or emptyDir
       persistence: true
       data:
         name: data
@@ -816,7 +692,6 @@ pulsarv3:
         -XX:+DisableExplicitGC
         -XX:+ExitOnOutOfMemoryError
         -XX:+PerfDisableSharedMem
-
   bookkeeper:
     pdb:
       usePolicy: false
@@ -834,7 +709,6 @@ pulsarv3:
         memory: 2048Mi
         cpu: 0.5
     volumes:
-      # use a persistent volume or emptyDir
       persistence: true
       journal:
         name: journal
@@ -884,7 +758,6 @@ pulsarv3:
       repository: apachepulsar/pulsar
       tag: 3.0.7
       pullPolicy: IfNotPresent
-
   broker:
     pdb:
       usePolicy: false
@@ -928,7 +801,6 @@ pulsarv3:
       ttlDurationDefaultInSeconds: "259200"
       subscriptionExpirationTimeMinutes: "3"
       backlogQuotaDefaultRetentionPolicy: producer_exception
-
   proxy:
     pdb:
       usePolicy: false
@@ -974,7 +846,6 @@ pulsarv3:
     service:
       annotations: {}
       type: ClusterIP
-
   kube-prometheus-stack:
     crds:
       enabled: false
@@ -984,43 +855,32 @@ pulsarv3:
     grafana:
       enabled: false
 
-# default values for pulsar v2
 pulsar:
   enabled: false
   name: pulsar
-
   fullnameOverride: ""
   persistence: true
-
-  maxMessageSize: "5242880"  # 5 * 1024 * 1024 Bytes, Maximum size of each message in pulsar.
-
+  maxMessageSize: "5242880"
   rbac:
     enabled: false
     psp: false
     limit_to_namespace: true
-
   affinity:
     anti_affinity: false
-
-## enableAntiAffinity: no
-
   components:
     zookeeper: true
     bookkeeper: true
-    # bookkeeper - autorecovery
     autorecovery: true
     broker: true
     functions: false
     proxy: true
     toolset: false
     pulsar_manager: false
-
   monitoring:
     prometheus: false
     grafana: false
     node_exporter: false
     alert_manager: false
-
   images:
     broker:
       repository: apachepulsar/pulsar
@@ -1046,7 +906,6 @@ pulsar:
       repository: apachepulsar/pulsar-manager
       pullPolicy: IfNotPresent
       tag: v0.1.0
-
   zookeeper:
     resources:
       requests:
@@ -1067,7 +926,6 @@ pulsar:
          -Dzookeeper.forceSync=no
     pdb:
       usePolicy: false
-
   bookkeeper:
     replicaCount: 3
     volumes:
@@ -1104,7 +962,6 @@ pulsar:
       nettyMaxFrameSizeBytes: "104867840"
     pdb:
       usePolicy: false
-
   broker:
     component: broker
     podMonitor:
@@ -1140,13 +997,11 @@ pulsar:
       backlogQuotaDefaultRetentionPolicy: producer_exception
     pdb:
       usePolicy: false
-
   autorecovery:
     resources:
       requests:
         memory: 512Mi
         cpu: 1
-
   proxy:
     replicaCount: 1
     podMonitor:
@@ -1168,22 +1023,14 @@ pulsar:
       httpNumThreads: "100"
     pdb:
       usePolicy: false
-
   pulsar_manager:
     service:
       type: ClusterIP
-
   pulsar_metadata:
     component: pulsar-init
     image:
-      # the image used for running `pulsar-cluster-initialize` job
       repository: apachepulsar/pulsar
       tag: 2.9.5
-
-
-## Configuration values for the kafka dependency
-## ref: https://artifacthub.io/packages/helm/bitnami/kafka
-##
 
 kafka:
   enabled: false
@@ -1192,21 +1039,15 @@ kafka:
   image:
     repository: bitnami/kafka
     tag: 3.1.0-debian-10-r52
-  ## Increase graceful termination for kafka graceful shutdown
   terminationGracePeriodSeconds: "90"
   pdb:
     create: false
-
-  ## Enable startup probe to prevent pod restart during recovering
   startupProbe:
     enabled: true
-
-  ## Kafka Java Heap size
   heapOpts: "-Xmx4096m -Xms4096m"
   maxMessageBytes: _10485760
   defaultReplicationFactor: 3
   offsetsTopicReplicationFactor: 3
-  ## Only enable time based log retention
   logRetentionHours: 168
   logRetentionBytes: _-1
   extraEnvVars:
@@ -1220,53 +1061,35 @@ kafka:
     value: "5242880"
   - name: KAFKA_CFG_LOG_ROLL_HOURS
     value: "24"
-
   persistence:
     enabled: true
     storageClass:
     accessMode: ReadWriteOnce
     size: 300Gi
-
   metrics:
-    ## Prometheus Kafka exporter: exposes complimentary metrics to JMX exporter
     kafka:
       enabled: false
       image:
         repository: bitnami/kafka-exporter
         tag: 1.4.2-debian-10-r182
-
-    ## Prometheus JMX exporter: exposes the majority of Kafkas metrics
     jmx:
       enabled: false
       image:
         repository: bitnami/jmx-exporter
         tag: 0.16.1-debian-10-r245
-
-    ## To enable serviceMonitor, you must enable either kafka exporter or jmx exporter.
-    ## And you can enable them both
     serviceMonitor:
       enabled: false
-
   service:
     type: ClusterIP
     ports:
       client: 9092
-
   zookeeper:
     enabled: true
     replicaCount: 3
 
-###################################
-# Woodpecker
-# - these configs are used to enable Woodpecker message queue
-###################################
 woodpecker:
   enabled: false
 
-###################################
-# External S3
-# - these configs are only used when `externalS3.enabled` is true
-###################################
 externalS3:
   enabled: false
   host: ""
@@ -1282,54 +1105,24 @@ externalS3:
   region: ""
   useVirtualHost: false
 
-###################################
-# GCS Gateway
-# - these configs are only used when `minio.gcsgateway.enabled` is true
-###################################
 externalGcs:
   bucketName: ""
 
-###################################
-# External etcd
-# - these configs are only used when `externalEtcd.enabled` is true
-###################################
 externalEtcd:
   enabled: false
-  ## the endpoints of the external etcd
-  ##
   endpoints:
     - localhost:2379
 
-###################################
-# External pulsar
-# - these configs are only used when `externalPulsar.enabled` is true
-###################################
 externalPulsar:
   enabled: false
   host: localhost
   port: 6650
-  maxMessageSize: "5242880"  # 5 * 1024 * 1024 Bytes, Maximum size of each message in pulsar.
+  maxMessageSize: "5242880"
   tenant: public
   namespace: default
   authPlugin: ""
   authParams: ""
 
-###################################
-# External kafka
-# - these configs are only used when `externalKafka.enabled` is true
-# - note that the following are just examples, you should confirm the
-#   value of brokerList and mechanisms according to the actual external
-#   Kafka configuration. E.g. If you select the AWS MSK, the configuration
-#   should look something like this:
-#   externalKafka:
-#     enabled: true
-#     brokerList: "xxxx:9096"
-#     securityProtocol: SASL_SSL
-#     sasl:
-#       mechanisms: SCRAM-SHA-512
-#       password: "xxx"
-#       username: "xxx"
-###################################
 externalKafka:
   enabled: false
   brokerList: localhost:9092
@@ -1339,10 +1132,6 @@ externalKafka:
     username: ""
     password: ""
 
-###################################
-# Text Embeddings Inference (TEI)
-# - these configs are used to deploy TEI service
-###################################
 tei:
   enabled: false
   name: text-embeddings-inference
@@ -1372,13 +1161,10 @@ tei:
       accessModes: ReadWriteOnce
       size: 50Gi
       subPath: ""
-  # TEI model configuration
-  modelId: "BAAI/bge-large-en-v1.5"
-  # Additional TEI configuration
+  modelId: "Qwen/Qwen3-Embedding-0.6B"
   extraArgs: []
   nodeSelector: {}
   affinity: {}
   tolerations: []
   topologySpreadConstraints: []
   extraEnv: []
-
