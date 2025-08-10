@@ -1119,7 +1119,7 @@ externalPulsar:
   port: 6650
   maxMessageSize: "5242880"
   tenant: public
-  namespace: default
+  namespace: poc-kanana-rag
   authPlugin: ""
   authParams: ""
 
