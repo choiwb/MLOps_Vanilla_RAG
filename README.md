@@ -1,4 +1,6 @@
-# Cluster 환경에서 Pod 배치
+# 인프라 구성도
+
+## Cluster 환경에서 Pod 배치
 
 | 노드풀 이름        | 노드 개수 | NodeSelector 라벨                                                           | 배포되는 파드(Pod)                                                                               | 주요 서비스/포트                                                                                                      | 비고                                                                  |
 | ------------- | ----- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -8,10 +10,10 @@
 | **gpu2** (비움) | 1     | `nodepool-name=gpu2` (추가 라벨 없음)                                           | 없음                                                                                         | 없음                                                                                                             | 확장 시 신규 LLM/Embedding 배치 가능                                         |
 
 
-# Vector DB 구성
+## Vector DB 구성
 - Milvus
 
-## md2json
+### md2json
 - chunk 길이: 200
 - chunk overlap 길이: 20
 - 분할자: "\n\n"
@@ -19,7 +21,7 @@
 - 원본데이터를 규격화 하여 저장
 <img width="1145" height="728" alt="스크린샷 2025-08-09 오후 9 05 57" src="https://github.com/user-attachments/assets/ce4de905-299b-48d5-9bce-939c9a96b478" />
 
-## json2vectordb
+### json2vectordb
 - Embedding: Qwen/Qwen3-Embedding-0.6B (https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)
 - Retriever: Hybrid Search  
   - Sparse Vector (키워드 벡터) & Dense Vector (의미 벡터) 조합하여 유사도 측정  
@@ -27,7 +29,7 @@
       - chunk 컬럼을 통해 Vector DB Insert 시, 연산
     - Dense Vector: BM25 유사도 (TF-IDF 와 유사)
 
-# Vector DB 확인
+## Vector DB 확인
 <img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 37 42" src="https://github.com/user-attachments/assets/300b3457-e10e-4835-85fe-5e43bafa5352" />
 
 <img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 37 57" src="https://github.com/user-attachments/assets/5caca83c-0225-4b24-9f73-5e3579752f00" />
@@ -35,7 +37,7 @@
 <img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 40 01" src="https://github.com/user-attachments/assets/15191290-441a-4c40-88fa-3ac36ddf0029" />
 
 
-# RAG 확인
+## RAG 확인
 - LLM: kakaocorp/kanana-nano-2.1b-instruct (https://huggingface.co/kakaocorp/kanana-nano-2.1b-instruct)
   - Temperature: 0.5
   - max_tokens: 4096    
