@@ -22,7 +22,7 @@ image:
 
 # Global node selector (모든 컴포넌트 기본 적용)
 nodeSelector:
-  system: vdb
+  nodepool-name: gpu1
 
 # Global tolerations (모든 컴포넌트 기본 적용)
 tolerations:
