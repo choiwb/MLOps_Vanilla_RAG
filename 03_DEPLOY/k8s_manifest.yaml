@@ -48,7 +48,7 @@ data:
   VLLM_HOST: "0.0.0.0"
   VLLM_PORT: "8082"
   LLM_API_KEY: "EMPTY"
-  VLLM_BASE_URL: "http://vllm.poc-kanana-rag.svc.cluster.local:8082/v1"
+  LLM_BASE_URL: "http://vllm.poc-kanana-rag.svc.cluster.local:8082/v1"
 
   # Milvus (Helm release 이름을 'milvus'로 가정)
   MILVUS_URI: "milvus.poc-kanana-rag.svc.cluster.local:19530"
@@ -331,11 +331,11 @@ spec:
         args:
         - uvicorn main:app --host 0.0.0.0 --port 8080
         env:
-        - name: OPENAI_BASE_URL
+        - name: LLM_BASE_URL
           valueFrom:
             configMapKeyRef:
               name: rag-config
-              key: LLM_OPENAI_BASE
+              key: LLM_BASE_URL
         - name: MILVUS_URI
           valueFrom:
             configMapKeyRef:
