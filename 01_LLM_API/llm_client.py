@@ -2,7 +2,7 @@
 import os
 from openai import OpenAI
 
-BASE_URL = os.getenv("VLLM_BASE_URL", "http://vllm.poc-kanana-rag.svc.cluster.local:8082/v1")
+BASE_URL = os.getenv("LLM_BASE_URL", "http://vllm.poc-kanana-rag.svc.cluster.local:8082/v1")
 API_KEY  = os.getenv("LLM_API_KEY", "EMPTY")  # vLLM에선 ANY/EMPTY 허용
 
 client = OpenAI(base_url=BASE_URL, api_key=API_KEY)
