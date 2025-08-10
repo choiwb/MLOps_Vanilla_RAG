@@ -530,7 +530,7 @@ minio:
     requests:
       memory: 2Gi
   nodeSelector:
-    system: vdb
+    nodepool-name: gpu1
   tolerations:
     - key: "dedicated"
       operator: "Equal"
@@ -584,7 +584,7 @@ etcd:
     port: 2379
     peerPort: 2380
   nodeSelector:
-    system: vdb
+    nodepool-name: gpu1
   tolerations:
     - key: "dedicated"
       operator: "Equal"
