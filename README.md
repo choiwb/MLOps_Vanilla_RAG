@@ -1,5 +1,5 @@
 # 인프라 구성도
-<img width="1285" height="739" alt="스크린샷 2025-08-10 오후 2 42 33" src="https://github.com/user-attachments/assets/3eb33de3-2748-434b-a735-909461f367e9" />
+<img width="1132" height="649" alt="스크린샷 2025-08-10 오후 4 54 55" src="https://github.com/user-attachments/assets/e2cd84c3-634d-414c-9ce3-176754065e24" />
 
 
 ## Cluster 환경에서 Pod 배치
