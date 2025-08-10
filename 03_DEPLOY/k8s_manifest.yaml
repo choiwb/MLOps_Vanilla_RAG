@@ -83,6 +83,11 @@ spec:
     spec:
       nodeSelector:
         nodepool-name: gpu1
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "gpu1"
+        effect: "NoSchedule"
       imagePullSecrets:
       - name: ncr-secret
       containers:
@@ -199,6 +204,11 @@ spec:
       nodeSelector:
         nodepool-name: gpu2
         gpu2-slot: llm
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "gpu2"
+        effect: "NoSchedule"
       imagePullSecrets:
       - name: ncr-secret
       containers:
@@ -307,6 +317,11 @@ spec:
     spec:
       nodeSelector:
         nodepool-name: cpu1
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "cpu1"
+        effect: "NoSchedule"
       imagePullSecrets:
       - name: ncr-secret
       containers:
