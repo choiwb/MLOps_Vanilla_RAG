@@ -26,7 +26,7 @@
 - Embedding: Qwen/Qwen3-Embedding-0.6B (https://huggingface.co/Qwen/Qwen3-Embedding-0.6B)
 - Retriever: Hybrid Search  
   - Sparse Vector (키워드 벡터) & Dense Vector (의미 벡터) 조합하여 유사도 측정  
-    - Sparse Vector: Cosine 유사도 (Milvus IP + L2 정규화)
+    - Sparse Vector: BM25 유사도 (TF-IDF 와 유사)
       - chunk 컬럼을 통해 Vector DB Insert 시, 연산
     - Dense Vector: Cosine 유사도 (Milvus IP + L2 정규화)
 
