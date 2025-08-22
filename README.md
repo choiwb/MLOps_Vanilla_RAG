@@ -28,7 +28,7 @@
   - Sparse Vector (키워드 벡터) & Dense Vector (의미 벡터) 조합하여 유사도 측정  
     - Sparse Vector: Cosine 유사도 (Milvus IP + L2 정규화)
       - chunk 컬럼을 통해 Vector DB Insert 시, 연산
-    - Dense Vector: BM25 유사도 (TF-IDF 와 유사)
+    - Dense Vector: Cosine 유사도 (Milvus IP + L2 정규화)
 
 ## Vector DB 확인
 <img width="1512" height="759" alt="스크린샷 2025-08-10 오전 12 37 42" src="https://github.com/user-attachments/assets/300b3457-e10e-4835-85fe-5e43bafa5352" />
